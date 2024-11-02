@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"fmt"
 	"log"
 	"os"
 
@@ -17,7 +18,12 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed connecting to %v. %v", serverPort, err)
 	}
-	go client.Receive()
+	requests := client.Receive()
+	go func() {
+		for request := range requests {
+			fmt.Println(string(request))
+		}
+	}()
 	defer client.Stop()
 	scanner := bufio.NewScanner(os.Stdin)
 	for scanner.Scan() {

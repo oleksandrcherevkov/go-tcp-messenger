@@ -1,16 +1,18 @@
 package client
 
 import (
-	"fmt"
 	"net"
 )
 
-const TCP = "tcp"
-const TCPPackageSize = 65535
+const (
+	TCP            = "tcp"
+	TCPPackageSize = 65535
+)
 
 type TCPClient struct {
-	addr string
-	conn net.Conn
+	addr     string
+	conn     net.Conn
+	requests chan []byte
 }
 
 func NewTCP(addr string) (*TCPClient, error) {
@@ -25,24 +27,28 @@ func NewTCP(addr string) (*TCPClient, error) {
 	}, nil
 }
 
-func (c *TCPClient) Receive() {
+func (c *TCPClient) Receive() chan []byte {
 	buffer := make([]byte, 0, TCPPackageSize)
-	for {
-		n, err := c.conn.Read(buffer[0:cap(buffer)])
-		if err != nil {
-			return
+	requests := make(chan []byte)
+	c.requests = requests
+	go func() {
+		for {
+			n, err := c.conn.Read(buffer[0:cap(buffer)])
+			if err != nil {
+				return
+			}
+			requests <- buffer[0:n]
 		}
-		fmt.Println(string(buffer[0:n]))
-	}
+	}()
+	return requests
 }
 
 func (c *TCPClient) Send(b []byte) error {
-	if _, err := c.conn.Write(b); err != nil {
-		return err
-	}
-	return nil
+	_, err := c.conn.Write(b)
+	return err
 }
 
 func (c *TCPClient) Stop() {
+	close(c.requests)
 	c.conn.Close()
 }
