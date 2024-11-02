@@ -33,14 +33,13 @@ func (u *User) Send(b []byte) error {
 type UsersRepository struct {
 	mu           sync.Mutex
 	users        []*User
-	vacantPlaces map[int]bool
+	vacantPlaces int
 }
 
 func NewUsersRepo() *UsersRepository {
 	return &UsersRepository{
-		mu:           sync.Mutex{},
-		users:        make([]*User, 0, InitialUsersExpected),
-		vacantPlaces: make(map[int]bool, InitialUsersExpected),
+		mu:    sync.Mutex{},
+		users: make([]*User, 0, InitialUsersExpected),
 	}
 }
 
@@ -61,16 +60,16 @@ func (r *UsersRepository) FindUser(addr string) *User {
 func (r *UsersRepository) AddUser(user *User) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-
-	if len(r.vacantPlaces) == 0 {
+	if r.vacantPlaces > 0 {
+		for index, u := range r.users {
+			if u != nil {
+				continue
+			}
+			r.users[index] = user
+		}
+		r.vacantPlaces--
+	} else {
 		r.users = append(r.users, user)
-		return
-	}
-
-	for k := range r.vacantPlaces {
-		r.users[k] = user
-		delete(r.vacantPlaces, k)
-		break
 	}
 }
 
@@ -85,7 +84,7 @@ func (r *UsersRepository) RemoveUser(addr string) {
 		}
 		if user.Addr == addr {
 			r.users[i] = nil
-			r.vacantPlaces[i] = true
+			r.vacantPlaces++
 		}
 	}
 }
