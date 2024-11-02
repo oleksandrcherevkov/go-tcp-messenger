@@ -92,6 +92,8 @@ func (r *UsersRepository) RemoveUser(addr string) {
 
 func (r *UsersRepository) IterateUsers(f func(*User)) {
 	for _, u := range r.users {
-		f(u)
+		if u != nil {
+			f(u)
+		}
 	}
 }
